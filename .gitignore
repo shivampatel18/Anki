@@ -1,0 +1,4 @@
+node_modules/
+dist/
+fixtures/big.apkg
+.DS_Store
