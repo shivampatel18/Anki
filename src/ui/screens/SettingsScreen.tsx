@@ -141,6 +141,7 @@ export function SettingsScreen() {
       <p className="hint center" style={{ marginTop: 24 }}>
         Recall schedules reviews with FSRS, the same algorithm Anki uses. Your data never leaves this device.
       </p>
+      <p className="hint center">Version built {__APP_VERSION__}</p>
 
       {confirm === 'erase' && (
         <ConfirmSheet
