@@ -5,6 +5,7 @@ import { cardOrdsForNote } from '../domain/template';
 import { emptySchedule, resetCard, setDue } from '../domain/scheduler';
 import { dayNumber } from '../domain/time';
 import type { Card, Deck, Note, NoteType, Preset, Settings } from '../domain/types';
+import { chapterRange, compareDeckNames, type ChapterRange } from '../domain/chapters';
 
 export const DEFAULT_DECK_ID = 1;
 export const DEFAULT_PRESET_ID = 1;
@@ -61,7 +62,7 @@ export async function today(now = Date.now()): Promise<number> {
 
 export async function listDecks(): Promise<Deck[]> {
   const decks = await db.decks.toArray();
-  return decks.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
+  return decks.sort((a, b) => compareDeckNames(a.name, b.name));
 }
 
 export function normalizeDeckName(name: string): string {
@@ -132,6 +133,21 @@ export async function deleteDeck(deckId: number): Promise<number> {
     await db.decks.bulkDelete(ids);
   });
   return removed;
+}
+
+/** Mark chapters as started (new cards flow) or not started (no new cards). Returns how many decks changed. */
+export async function setChaptersStarted(deckId: number, range: ChapterRange, started: boolean): Promise<number> {
+  return db.transaction('rw', db.decks, async () => {
+    const decks = await db.decks.toArray();
+    const ids = chapterRange(decks, deckId, range);
+    let changed = 0;
+    for (const d of decks) {
+      if (!ids.includes(d.id) || !!d.notStarted === !started) continue;
+      await db.decks.update(d.id, { notStarted: !started, mtime: Date.now() });
+      changed++;
+    }
+    return changed;
+  });
 }
 
 // ---------- presets ----------

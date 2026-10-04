@@ -3,6 +3,7 @@ import { db } from './db';
 import { getSettings } from './repo';
 import { type Card, CardState, type Deck, type Preset, type ReviewLogEntry, type Settings } from '../domain/types';
 import { dayEnd, dayNumber, dayStart, MINUTE } from '../domain/time';
+import { compareDeckNames, notStartedIds } from '../domain/chapters';
 
 export interface DaySnapshot {
   now: number;
@@ -145,11 +146,13 @@ function stableRandom(id: number, salt: number): number {
 function bucket(snap: DaySnapshot): Map<number, Pools> {
   const own = new Map<number, Pools>();
   for (const d of snap.decks) own.set(d.id, { news: [], reviews: [], learning: [] });
+  const paused = notStartedIds(snap.decks);
   for (const c of snap.cards.values()) {
     const p = own.get(c.deckId);
     if (!p) continue;
-    if (c.state === CardState.New) p.news.push(c);
-    else if (c.state === CardState.Review) p.reviews.push(c);
+    if (c.state === CardState.New) {
+      if (!paused.has(c.deckId)) p.news.push(c);
+    } else if (c.state === CardState.Review) p.reviews.push(c);
     else p.learning.push(c);
   }
   return own;
@@ -163,7 +166,7 @@ function isInterday(c: Card, snap: DaySnapshot): boolean {
 export function buildTree(snap: DaySnapshot): DeckNode[] {
   const byName = new Map<string, DeckNode>();
   const roots: DeckNode[] = [];
-  const sorted = [...snap.decks].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
+  const sorted = [...snap.decks].sort((a, b) => compareDeckNames(a.name, b.name));
   for (const deck of sorted) {
     const parts = deck.name.split('::');
     const node: DeckNode = { deck, label: parts[parts.length - 1], depth: parts.length - 1, children: [], newCount: 0, learnCount: 0, reviewCount: 0 };

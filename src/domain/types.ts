@@ -38,6 +38,8 @@ export interface Deck {
   collapsed?: boolean;
   /** Anki's deck id when imported. */
   ankiId?: number;
+  /** A chapter you haven't reached: no new cards from it (or its subdecks) until started. */
+  notStarted?: boolean;
   mtime: number;
 }
 

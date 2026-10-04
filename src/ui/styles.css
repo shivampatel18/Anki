@@ -217,6 +217,12 @@ input[type='range'] { width: 100%; accent-color: var(--primary); height: 32px; }
 .empty h2 { font-size: 22px; margin: 0 0 8px; }
 .empty p { color: var(--ink-2); margin: 0 auto 20px; max-width: 34ch; }
 
+/* not-started chapters: quiet, but still tappable */
+.deck-row.not-started .open { color: var(--ink-3); font-weight: 400; }
+.deck-row .lock { vertical-align: -2px; margin-right: 6px; color: var(--ink-3); }
+.not-started-note { padding: 16px; }
+.not-started-note p { margin: 6px 0 14px; }
+
 /* ---------- deck overview ---------- */
 .overview-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0 20px; }
 .overview-counts div { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px; }

@@ -5,7 +5,7 @@ import { todaySummary } from '../../data/stats';
 import { db } from '../../data/db';
 import { ensureDeck } from '../../data/repo';
 import { Count, TitleBar, plural } from '../components/common';
-import { IconChevron, IconImport, IconPlus } from '../components/Icons';
+import { IconChevron, IconImport, IconLock, IconPlus } from '../components/Icons';
 import { PromptSheet } from '../components/Sheet';
 import { formatDuration } from '../../domain/time';
 
@@ -74,7 +74,7 @@ export function DecksScreen() {
             </div>
             <div className="deck-list" role="list">
               {rows.map((n) => (
-                <div key={n.deck.id} className="deck-row" role="listitem">
+                <div key={n.deck.id} className={'deck-row' + (n.deck.notStarted ? ' not-started' : '')} role="listitem">
                   <div className="name" style={{ paddingLeft: n.depth * 16 }}>
                     {n.children.length ? (
                       <button className="caret" aria-expanded={!n.deck.collapsed} aria-label={n.deck.collapsed ? `Expand ${n.label}` : `Collapse ${n.label}`} onClick={() => toggle(n)}>
@@ -83,7 +83,8 @@ export function DecksScreen() {
                     ) : (
                       <span className="caret-space" />
                     )}
-                    <button className="open" onClick={() => app.go({ name: 'deck', deckId: n.deck.id })}>
+                    <button className="open" onClick={() => app.go({ name: 'deck', deckId: n.deck.id })} aria-label={n.deck.notStarted ? `${n.label}, not started` : undefined}>
+                      {n.deck.notStarted && <IconLock className="lock" />}
                       {n.label}
                     </button>
                   </div>

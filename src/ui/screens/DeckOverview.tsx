@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { useApp, useLoad } from '../app-state';
 import { buildTree, findNode, loadSnapshot } from '../../data/queue';
 import { db } from '../../data/db';
-import { DEFAULT_DECK_ID, deckAndChildrenIds, deleteDeck, renameDeck } from '../../data/repo';
+import { DEFAULT_DECK_ID, deckAndChildrenIds, deleteDeck, renameDeck, setChaptersStarted } from '../../data/repo';
 import { TitleBar, plural } from '../components/common';
 import { ActionSheet, ConfirmSheet, PromptSheet } from '../components/Sheet';
 import { IconMore } from '../components/Icons';
 import { CardState } from '../../domain/types';
+import { notStartedIds } from '../../domain/chapters';
 
 export function DeckOverview({ deckId }: { deckId: number }) {
   const app = useApp();
-  const [sheet, setSheet] = useState<'menu' | 'rename' | 'delete' | null>(null);
+  const [sheet, setSheet] = useState<'menu' | 'rename' | 'delete' | 'stop' | null>(null);
   const { data } = useLoad(async () => {
     const deck = await db.decks.get(deckId);
     if (!deck) return null;
@@ -19,9 +20,11 @@ export function DeckOverview({ deckId }: { deckId: number }) {
     const ids = await deckAndChildrenIds(deckId);
     const cards = await db.cards.where('deckId').anyOf(ids).toArray();
     const total = cards.length;
-    const newTotal = cards.filter((c) => c.state === CardState.New && !c.suspended).length;
+    const paused = notStartedIds(snap.decks);
+    const newTotal = cards.filter((c) => c.state === CardState.New && !c.suspended && !paused.has(c.deckId)).length;
+    const pausedNew = cards.filter((c) => c.state === CardState.New && !c.suspended && paused.has(c.deckId)).length;
     const nextDue = cards.filter((c) => c.state !== CardState.New && !c.suspended && c.due > snap.todayEnd).reduce((m, c) => Math.min(m, c.due), Infinity);
-    return { deck, node, total, newTotal, nextDue };
+    return { deck, node, total, newTotal, pausedNew, nextDue };
   }, [deckId]);
 
   if (data === null) {
@@ -35,6 +38,17 @@ export function DeckOverview({ deckId }: { deckId: number }) {
   if (!data) return <div className="screen no-tabs" />;
   const { deck, node } = data;
   const due = (node?.newCount ?? 0) + (node?.learnCount ?? 0) + (node?.reviewCount ?? 0);
+  const hasSubdecks = !!node?.children.length;
+  const start = async (range: 'only' | 'upTo') => {
+    const n = await setChaptersStarted(deckId, range, true);
+    app.toast(range === 'only' ? 'Chapter started. Its new words now show up.' : `Started ${plural(n, 'deck')}.`);
+    app.refresh();
+  };
+  const stop = async (range: 'only' | 'from') => {
+    const n = await setChaptersStarted(deckId, range, false);
+    app.toast(range === 'only' ? 'Marked as not started.' : `Marked ${plural(n, 'deck')} as not started.`);
+    app.refresh();
+  };
 
   return (
     <div className="screen">
@@ -47,6 +61,22 @@ export function DeckOverview({ deckId }: { deckId: number }) {
         }
       />
       {deck.name.includes('::') && <p className="muted center" style={{ marginTop: -6 }}>{deck.name.split('::').slice(0, -1).join(' › ')}</p>}
+      {deck.notStarted && (
+        <div className="group not-started-note">
+          <b>Not started yet</b>
+          <p className="muted">
+            New words from this {hasSubdecks ? 'deck and its subdecks' : 'chapter'} stay hidden, including when you study the decks above it. Start it once you’ve covered it in your book.
+          </p>
+          <div className="stack">
+            <button className="btn primary wide" onClick={() => start('only')}>
+              Start this chapter
+            </button>
+            <button className="btn wide" onClick={() => start('upTo')}>
+              Start every chapter up to this one
+            </button>
+          </div>
+        </div>
+      )}
       <div className="overview-counts">
         <div>
           <b style={{ color: 'var(--c-new)' }}>{node?.newCount ?? 0}</b>
@@ -65,7 +95,7 @@ export function DeckOverview({ deckId }: { deckId: number }) {
         <button className="btn primary wide" style={{ minHeight: 56, fontSize: 18 }} onClick={() => app.go({ name: 'study', deckId })}>
           Study now
         </button>
-      ) : (
+      ) : deck.notStarted ? null : (
         <div className="group" style={{ padding: 16 }}>
           <b>You’re done with this deck for today.</b>
           <p className="muted" style={{ margin: '6px 0 0' }}>
@@ -77,6 +107,11 @@ export function DeckOverview({ deckId }: { deckId: number }) {
                   ? `${plural(data.newTotal, 'new card')} waiting; the daily limit is reached.`
                   : 'Nothing is scheduled.'}
           </p>
+          {data.pausedNew > 0 && !deck.notStarted && (
+            <p className="muted" style={{ margin: '6px 0 0' }}>
+              {plural(data.pausedNew, 'new word')} in chapters you haven’t started are waiting.
+            </p>
+          )}
         </div>
       )}
       <p className="muted center" style={{ marginTop: 14 }}>
@@ -99,9 +134,20 @@ export function DeckOverview({ deckId }: { deckId: number }) {
           title={deck.name}
           onClose={() => setSheet(null)}
           actions={[
+            { label: 'Mark as not started', hidden: !!deck.notStarted, run: () => setSheet('stop') },
             { label: 'Rename deck', run: () => setSheet('rename') },
             { label: 'Deck options', run: () => app.go({ name: 'deckOptions', deckId }) },
             { label: 'Delete deck', danger: true, hidden: deckId === DEFAULT_DECK_ID, run: () => setSheet('delete') },
+          ]}
+        />
+      )}
+      {sheet === 'stop' && (
+        <ActionSheet
+          title="Mark as not started"
+          onClose={() => setSheet(null)}
+          actions={[
+            { label: 'Just this one', run: () => stop('only') },
+            { label: 'This one and every deck after it', run: () => stop('from') },
           ]}
         />
       )}
