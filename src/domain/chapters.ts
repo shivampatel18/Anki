@@ -20,17 +20,19 @@ export function notStartedIds(decks: Deck[]): Set<number> {
 export type ChapterRange = 'only' | 'upTo' | 'from';
 
 /**
- * Decks affected when starting/stopping a chapter, within the same top-level deck:
+ * Decks affected when starting/stopping a chapter, among its siblings under the same parent
+ * deck (so one course never spills into another when courses share a top-level deck):
  * - only: the deck and its subdecks
- * - upTo: every deck listed before it, the deck, and its subdecks
- * - from: the deck, its subdecks and every deck listed after it
+ * - upTo: every sibling listed before it (with subdecks), the deck, and its subdecks
+ * - from: the deck, its subdecks, and every sibling listed after it (with subdecks)
  */
 export function chapterRange(decks: Deck[], deckId: number, range: ChapterRange): number[] {
   const deck = decks.find((d) => d.id === deckId);
   if (!deck) return [];
-  const root = deck.name.split('::')[0];
+  const parts = deck.name.split('::');
+  const parent = parts.slice(0, -1).join('::');
   const family = decks
-    .filter((d) => d.name === root || isUnder(d.name, root) || d.name.toLowerCase() === root.toLowerCase())
+    .filter((d) => (parent ? isUnder(d.name, parent) : true))
     .sort((a, b) => compareDeckNames(a.name, b.name));
   const idx = family.findIndex((d) => d.id === deckId);
   const self = family.filter((d) => d.id === deckId || isUnder(d.name, deck.name));

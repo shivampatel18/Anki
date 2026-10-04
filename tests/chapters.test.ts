@@ -18,11 +18,25 @@ describe('chapter ranges', () => {
     deck(6, 'Mandarin::Book 3'),
     deck(7, 'Spanish'),
   ];
-  it('orders numerically and stays within the top-level deck', () => {
+  it('orders numerically and stays among siblings under the same parent', () => {
     expect(chapterRange(decks, 6, 'from')).toEqual([6, 5]);
-    expect(chapterRange(decks, 3, 'upTo')).toEqual([1, 2, 3, 4]);
+    expect(chapterRange(decks, 3, 'upTo')).toEqual([2, 3, 4]);
     expect(chapterRange(decks, 3, 'only')).toEqual([3, 4]);
     expect(chapterRange(decks, 2, 'from')).toEqual([2, 3, 4, 6, 5]);
+  });
+
+  it('never spills into another course nested in the same top-level deck', () => {
+    const nested = [
+      deck(10, 'Chinese'),
+      deck(11, "Chinese::Let's Learn Mandarin"),
+      deck(12, "Chinese::Let's Learn Mandarin::Book 5"),
+      deck(13, "Chinese::Let's Learn Mandarin::Book 6"),
+      deck(14, "Chinese::Let's Learn Mandarin::Book 7"),
+      deck(15, 'Chinese::Mandarin Corner'),
+      deck(16, 'Chinese::Mandarin Corner::Lesson 1'),
+    ];
+    expect(chapterRange(nested, 13, 'from')).toEqual([13, 14]);
+    expect(chapterRange(nested, 13, 'upTo')).toEqual([12, 13]);
   });
 });
 
@@ -66,4 +80,26 @@ describe('not-started chapters', () => {
     expect(next.kind === 'card' && next.card.id).toBe(card.id);
     expect(findNode(buildTree(snap), ids[6])!.newCount).toBe(0);
   });
+});
+
+import { renameDeck } from '../src/data/repo';
+it('nesting a course under a new top deck keeps its books, flags and counts', async () => {
+  const db = await freshDb();
+  const nt = (await listNoteTypes()).find((t) => t.name === 'Basic')!;
+  for (const name of ["Let's Learn Mandarin::Book 1", "Let's Learn Mandarin::Book 2", 'HSK 1']) {
+    const d = await ensureDeck(name);
+    await addNote(nt.id, d.id, [name, 'x'], []);
+  }
+  const b2 = (await db.decks.where('name').equals("Let's Learn Mandarin::Book 2").first())!;
+  await setChaptersStarted(b2.id, 'only', false);
+  const course = (await db.decks.where('name').equals("Let's Learn Mandarin").first())!;
+  await renameDeck(course.id, "Chinese::Let's Learn Mandarin");
+  const hsk = (await db.decks.where('name').equals('HSK 1').first())!;
+  await renameDeck(hsk.id, 'Chinese::HSK 1');
+  const names = (await db.decks.toArray()).map((d) => d.name).sort();
+  expect(names).toEqual(['Chinese', 'Chinese::HSK 1', "Chinese::Let's Learn Mandarin", "Chinese::Let's Learn Mandarin::Book 1", "Chinese::Let's Learn Mandarin::Book 2", 'Default']);
+  expect((await db.decks.get(b2.id))!.notStarted).toBe(true);
+  const tree = buildTree(await loadSnapshot());
+  const chinese = tree.find((n) => n.label === 'Chinese')!;
+  expect(chinese.newCount).toBe(2); // Book 1 + HSK 1; Book 2 not started
 });
