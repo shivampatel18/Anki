@@ -11,7 +11,8 @@ import { StatsScreen } from './screens/StatsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DeckOptions } from './screens/DeckOptions';
 import { ImportScreen } from './screens/ImportScreen';
-import { IconAdd, IconBrowse, IconDecks, IconSettings, IconStats } from './components/Icons';
+import { IconAdd, IconBrowse, IconDecks, IconDictionary, IconSettings, IconStats } from './components/Icons';
+import { DictionaryScreen } from './screens/DictionaryScreen';
 
 export function App() {
   const [ready, setReady] = useState<'loading' | 'ok' | string>('loading');
@@ -42,6 +43,7 @@ export function App() {
 
 const TABS: { tab: Tab; label: string; Icon: typeof IconDecks }[] = [
   { tab: 'decks', label: 'Decks', Icon: IconDecks },
+  { tab: 'dictionary', label: 'Dictionary', Icon: IconDictionary },
   { tab: 'browse', label: 'Browse', Icon: IconBrowse },
   { tab: 'add', label: 'Add', Icon: IconAdd },
   { tab: 'stats', label: 'Stats', Icon: IconStats },
@@ -58,6 +60,7 @@ function Shell() {
       currentTab = r.tab;
       screen =
         r.tab === 'decks' ? <DecksScreen /> :
+        r.tab === 'dictionary' ? <DictionaryScreen /> :
         r.tab === 'browse' ? <BrowseScreen asTab /> :
         r.tab === 'add' ? <NoteEditor mode="add" asTab /> :
         r.tab === 'stats' ? <StatsScreen /> :

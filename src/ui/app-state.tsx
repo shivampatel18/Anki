@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-export type Tab = 'decks' | 'browse' | 'add' | 'stats' | 'settings';
+export type Tab = 'decks' | 'dictionary' | 'browse' | 'add' | 'stats' | 'settings';
 
 export type Route =
   | { name: 'tab'; tab: Tab }

@@ -62,3 +62,6 @@ export const IconGear = (p: SVGProps<SVGSVGElement>) => (
 export const IconLock = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base({ width: 16, height: 16, ...p })}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
 );
+export const IconDictionary = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z" /><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3" /><path d="M9 7.5h6M12 7.5v6M9.5 10.5l-1 3M14.5 10.5l1 3" /></svg>
+);
